@@ -1,0 +1,52 @@
+{% load static %}
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}BarterExchange{% endblock %}</title>
+  <link rel="icon" type="image/png" sizes="128x128" href="{% static 'exchange/brand/favicon-bcx-transparent.png' %}">
+  <link rel="stylesheet" href="{% static 'exchange/styles.css' %}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{% url 'catalog' %}">
+      <img src="{% static 'exchange/brand/logo-cropped.png' %}" alt="BarterExchange">
+    </a>
+    {% if user.is_authenticated %}
+      <nav>
+        <a class="{% if request.resolver_match.url_name == 'catalog' %}active{% endif %}" href="{% url 'catalog' %}">Каталог</a>
+        <a class="{% if request.resolver_match.url_name == 'my_profile' or request.resolver_match.url_name == 'profile_detail' %}active{% endif %}" href="{% url 'my_profile' %}">Профиль</a>
+        <a class="{% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" href="{% url 'notifications' %}">
+          Уведомления{% if unread_notifications_count %} · {{ unread_notifications_count }}{% endif %}
+        </a>
+      </nav>
+      <div class="account-panel">
+        <a class="header-create" href="{% url 'listing_create' %}">Создать объявление</a>
+        <a href="{% url 'my_profile' %}">Профиль: {{ current_profile.name }}</a>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="link-button" type="submit">Выйти</button>
+        </form>
+      </div>
+    {% else %}
+      <nav>
+        <a href="{% url 'login' %}">Войти</a>
+        <a href="{% url 'register' %}">Зарегистрироваться</a>
+      </nav>
+    {% endif %}
+  </header>
+
+  {% if messages %}
+    <section class="messages">
+      {% for message in messages %}
+        <p class="message {{ message.tags }}">{{ message }}</p>
+      {% endfor %}
+    </section>
+  {% endif %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+</body>
+</html>

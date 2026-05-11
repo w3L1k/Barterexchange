@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+
+{% block title %}{{ listing.title }}{% endblock %}
+
+{% block content %}
+<section class="detail">
+  <div class="detail-main">
+    {% if listing.primary_image_url %}
+      <img class="detail-image" src="{{ listing.primary_image_url }}" alt="{{ listing.title }}">
+    {% endif %}
+    <p class="eyebrow">{{ listing.category.name }} · {{ listing.city }}</p>
+    <h1>{{ listing.title }}</h1>
+    <div class="facts">
+      <span>{{ listing.get_condition_display }}</span>
+      <span>Владелец: <a href="{% url 'profile_detail' listing.owner.pk %}">{{ listing.owner.name }}</a></span>
+    </div>
+    {% if listing.exchange_terms %}
+      <h2>Условия обмена</h2>
+      <p>{{ listing.exchange_terms }}</p>
+    {% endif %}
+    <h2>Описание</h2>
+    <p>{{ listing.description }}</p>
+    <h2>Что хочет получить владелец</h2>
+    <p><strong>{{ listing.desired_category.name }}</strong>: {{ listing.desired_keywords }}</p>
+    {% if current_profile == listing.owner %}
+    {% elif current_profile %}
+      <p class="minor-action"><a href="{% url 'listing_complaint' listing.pk %}">Пожаловаться на объявление</a></p>
+    {% else %}
+      <p class="minor-action"><a href="{% url 'login' %}?next={% url 'listing_complaint' listing.pk %}">Пожаловаться на объявление</a></p>
+    {% endif %}
+  </div>
+  <aside class="side-panel">
+    {% if current_profile == listing.owner %}
+      {% if has_active_exchange %}
+        <p class="panel-note">Редактирование, архивация и удаление недоступны, пока по объявлению есть ожидающий или принятый обмен.</p>
+      {% else %}
+        <a class="button full" href="{% url 'listing_edit' listing.pk %}">Редактировать</a>
+      {% endif %}
+      {% if listing.status != 'archived' and not has_active_exchange %}
+        <form method="post" action="{% url 'listing_archive' listing.pk %}">
+          {% csrf_token %}
+          <button class="button ghost full" type="submit">Архивировать</button>
+        </form>
+      {% endif %}
+      {% if not has_active_exchange %}
+        <form method="post" action="{% url 'listing_delete' listing.pk %}">
+          {% csrf_token %}
+          <button class="button ghost danger full" type="submit">Удалить</button>
+        </form>
+      {% endif %}
+    {% elif current_profile %}
+      <a class="button full" href="{% url 'exchange_create' listing.pk %}">Предложить обмен</a>
+    {% else %}
+      <a class="button full" href="{% url 'login' %}?next={% url 'exchange_create' listing.pk %}">Предложить обмен</a>
+    {% endif %}
+  </aside>
+</section>
+
+{% if user.is_authenticated %}
+  <section>
+    <div class="section-heading">
+      <h2>Лучшие варианты обмена</h2>
+    </div>
+    <div class="grid compact">
+      {% for match in matches %}
+        {% include "exchange/partials/match_card.html" with match=match %}
+      {% empty %}
+        <p class="empty">Пока нет объявлений, которые подходят по категории или городу.</p>
+      {% endfor %}
+    </div>
+  </section>
+{% endif %}
+{% endblock %}

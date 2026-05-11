@@ -1,0 +1,50 @@
+{% extends "base.html" %}
+
+{% block title %}Отзыв об обмене{% endblock %}
+
+{% block content %}
+<section class="form-page">
+  <div>
+    <p class="eyebrow">завершенный обмен</p>
+    <h1>Оставить отзыв</h1>
+    <p>{{ exchange.offered_listing.title }} → {{ exchange.requested_listing.title }}</p>
+    <p>Отзыв будет опубликован в профиле пользователя {{ target.name }}.</p>
+  </div>
+
+  <form class="form-card" method="post">
+    {% csrf_token %}
+    {% if form.non_field_errors %}
+      {{ form.non_field_errors }}
+    {% endif %}
+    <div class="rating-field">
+      <span>Оценка:</span>
+      <div class="star-picker" aria-label="Оценка от 1 до 5">
+        {% for value in score_values %}
+          <input
+            id="score-{{ value }}"
+            type="radio"
+            name="{{ form.score.html_name }}"
+            value="{{ value }}"
+            {% if form.score.value|stringformat:"s" == value|stringformat:"s" %}checked{% endif %}
+            required
+          >
+          <label for="score-{{ value }}" title="{{ value }} из 5">★</label>
+        {% endfor %}
+      </div>
+      {% for error in form.score.errors %}
+        <span class="field-error">{{ error }}</span>
+      {% endfor %}
+    </div>
+    <p>
+      {{ form.text.label_tag }}
+      {{ form.text }}
+      {% for error in form.text.errors %}
+        <span class="field-error">{{ error }}</span>
+      {% endfor %}
+    </p>
+    <div class="form-actions">
+      <button type="submit">Опубликовать отзыв</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

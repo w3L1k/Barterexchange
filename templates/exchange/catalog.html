@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}BarterExchange{% endblock %}
+
+{% block content %}
+<section class="catalog-head">
+  <div>
+    <p class="eyebrow">умный обмен товарами</p>
+    <h1>Обменивайте вещи без денег</h1>
+    <p>Находите товары рядом и предлагайте обмен напрямую. Система подскажет варианты по категории, городу и интересам владельцев.</p>
+  </div>
+  {% if user.is_authenticated %}
+    <a class="button" href="{% url 'listing_create' %}">Создать объявление</a>
+  {% else %}
+    <a class="button" href="{% url 'login' %}?next={% url 'listing_create' %}">Создать объявление</a>
+  {% endif %}
+</section>
+
+<section class="filters">
+  <form method="get">
+    <input type="search" name="q" placeholder="Что хотите найти?" value="{{ filters.q }}">
+    <select name="category">
+      <option value="">Все категории</option>
+      {% for category in categories %}
+        <option value="{{ category.slug }}" {% if filters.category == category.slug %}selected{% endif %}>{{ category.name }}</option>
+      {% endfor %}
+    </select>
+    <select name="city">
+      <option value="">Все города</option>
+      {% for city in cities %}
+        <option value="{{ city }}" {% if filters.city == city %}selected{% endif %}>{{ city }}</option>
+      {% endfor %}
+    </select>
+    <select name="condition">
+      <option value="">Любое состояние</option>
+      {% for value, label in conditions %}
+        <option value="{{ value }}" {% if filters.condition == value %}selected{% endif %}>{{ label }}</option>
+      {% endfor %}
+    </select>
+    <select name="sort">
+      <option value="-created_at" {% if filters.sort == "-created_at" %}selected{% endif %}>Сначала новые</option>
+      <option value="title" {% if filters.sort == "title" %}selected{% endif %}>По названию</option>
+    </select>
+    <button type="submit">Найти</button>
+    <a class="button ghost reset-filter" href="{% url 'catalog' %}">Сбросить</a>
+  </form>
+</section>
+
+<section class="grid">
+  {% for listing in listings %}
+    <article class="listing-card">
+      {% if listing.primary_image_url %}
+        <a class="card-image" href="{{ listing.get_absolute_url }}">
+          <img src="{{ listing.primary_image_url }}" alt="{{ listing.title }}" loading="lazy">
+        </a>
+      {% endif %}
+      <div class="card-topline">
+        <span>{{ listing.category.name }}</span>
+        <span>{{ listing.city }}</span>
+      </div>
+      <h2><a href="{{ listing.get_absolute_url }}">{{ listing.title }}</a></h2>
+      <p>{{ listing.description|truncatechars:115 }}</p>
+      <div class="exchange-intent">
+        <span>Ищу взамен</span>
+        <strong>{{ listing.desired_category.name }}</strong>
+      </div>
+      <div class="listing-meta">
+        <span>Состояние: {{ listing.get_condition_display }}</span>
+      </div>
+      <footer>
+        {% if user.is_authenticated %}
+          <a class="button" href="{% url 'exchange_create' listing.pk %}">Предложить обмен</a>
+        {% else %}
+          <a class="button" href="{% url 'login' %}?next={% url 'exchange_create' listing.pk %}">Предложить обмен</a>
+        {% endif %}
+      </footer>
+    </article>
+  {% empty %}
+    <p class="empty">По таким фильтрам объявлений нет.</p>
+  {% endfor %}
+</section>
+{% endblock %}

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Нужно объявление{% endblock %}
+
+{% block content %}
+<section class="empty-exchange-page">
+  <div class="empty-exchange-copy">
+    <p class="eyebrow">предложение обмена</p>
+    <h1>Сначала добавьте свой товар</h1>
+    <p>Чтобы предложить обмен за «{{ requested_listing.title }}», нужно выбрать одно из ваших активных объявлений. Сейчас у вас еще нет товаров, которые можно предложить владельцу.</p>
+  </div>
+  <div class="form-card empty-action">
+    {% if requested_listing.primary_image_url %}
+      <img class="empty-action-image" src="{{ requested_listing.primary_image_url }}" alt="{{ requested_listing.title }}">
+    {% endif %}
+    <h2>{{ requested_listing.title }}</h2>
+    <p>Создайте объявление со своим товаром, а затем вернитесь к этому предложению обмена.</p>
+    <div class="form-actions">
+      <a class="button" href="{% url 'listing_create' %}">Создать объявление</a>
+      <a class="button ghost" href="{{ requested_listing.get_absolute_url }}">Вернуться к товару</a>
+    </div>
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+
+{% block title %}Профиль {{ profile.name }}{% endblock %}
+
+{% block content %}
+<section class="profile-head">
+  <div>
+    <p class="eyebrow">{% if is_own_profile %}мой профиль{% else %}профиль пользователя{% endif %}</p>
+    <h1>{{ profile.name }}</h1>
+    <p>{{ profile.bio|default:"Пользователь пока не добавил описание профиля." }}</p>
+  </div>
+  <dl class="profile-stats">
+    <div>
+      <dt>Город</dt>
+      <dd>{{ profile.city }}</dd>
+    </div>
+    <div>
+      <dt>Объявлений</dt>
+      <dd>{{ listings|length }}</dd>
+    </div>
+    <div>
+      <dt>Средняя оценка</dt>
+      <dd>{% if average_score %}{{ average_score }}/5{% else %}Нет оценок{% endif %}</dd>
+    </div>
+    <div>
+      <dt>Оценок</dt>
+      <dd>{{ review_count }}</dd>
+    </div>
+  </dl>
+  {% if not is_own_profile %}
+    <div class="profile-actions">
+      <a class="button ghost danger" href="{% url 'profile_complaint' profile.pk %}">Пожаловаться на профиль</a>
+    </div>
+  {% endif %}
+</section>
+
+<section>
+  <div class="section-heading">
+    <h2>Предметы на обмен</h2>
+    {% if is_own_profile %}
+      <a class="button ghost" href="{% url 'profile_edit' %}">Редактировать профиль</a>
+      <a class="button" href="{% url 'listing_create' %}">Создать объявление</a>
+    {% endif %}
+  </div>
+  <div class="grid compact">
+    {% for listing in listings %}
+      <article class="listing-card">
+        {% if listing.primary_image_url %}
+          <a class="card-image" href="{{ listing.get_absolute_url }}">
+            <img src="{{ listing.primary_image_url }}" alt="{{ listing.title }}" loading="lazy">
+          </a>
+        {% endif %}
+        <div class="card-topline">
+          <span>{{ listing.category.name }}</span>
+          <span>{{ listing.city }}</span>
+          <span>{{ listing.get_status_display }}</span>
+        </div>
+        <h2><a href="{{ listing.get_absolute_url }}">{{ listing.title }}</a></h2>
+        <p>{{ listing.description|truncatechars:115 }}</p>
+        <div class="exchange-intent">
+          <span>Ищу взамен</span>
+          <strong>{{ listing.desired_category.name }}</strong>
+        </div>
+        <div class="listing-meta">
+          <span>Состояние: {{ listing.get_condition_display }}</span>
+        </div>
+        <footer>
+          {% if is_own_profile %}
+            <a class="button ghost" href="{% url 'listing_edit' listing.pk %}">Редактировать</a>
+          {% else %}
+            <a class="button" href="{% url 'exchange_create' listing.pk %}">Предложить обмен</a>
+          {% endif %}
+        </footer>
+      </article>
+    {% empty %}
+      <p class="empty">У пользователя пока нет объявлений.</p>
+    {% endfor %}
+  </div>
+</section>
+
+{% if is_own_profile %}
+  <section class="profile-exchanges">
+    <div class="section-heading">
+      <h2>Мои обмены</h2>
+    </div>
+    <div class="exchange-columns">
+      <div>
+        <h3>Входящие</h3>
+        {% for exchange in incoming %}
+          {% include "exchange/partials/exchange_card.html" with exchange=exchange incoming=True %}
+        {% empty %}
+          <p class="empty">Входящих предложений пока нет.</p>
+        {% endfor %}
+      </div>
+      <div>
+        <h3>Исходящие</h3>
+        {% for exchange in outgoing %}
+          {% include "exchange/partials/exchange_card.html" with exchange=exchange incoming=False %}
+        {% empty %}
+          <p class="empty">Исходящих предложений пока нет.</p>
+        {% endfor %}
+      </div>
+      <div>
+        <h3>В процессе</h3>
+        {% for exchange in in_progress %}
+          {% include "exchange/partials/exchange_card.html" with exchange=exchange incoming=False %}
+        {% empty %}
+          <p class="empty">Обменов в процессе пока нет.</p>
+        {% endfor %}
+      </div>
+      <div>
+        <h3>Завершенные / ожидают оценки</h3>
+        {% for exchange in completed %}
+          {% include "exchange/partials/exchange_card.html" with exchange=exchange incoming=False %}
+        {% empty %}
+          <p class="empty">Завершенных обменов пока нет.</p>
+        {% endfor %}
+      </div>
+    </div>
+  </section>
+{% endif %}
+
+<section class="reviews-section">
+  <div class="section-heading">
+    <h2>Отзывы после обменов</h2>
+  </div>
+
+  <div class="review-list">
+    {% for review in reviews %}
+      <article class="review-card">
+        <div class="review-topline">
+          <span class="review-stars" aria-label="{{ review.score }} из 5">
+            {% for value in "12345" %}
+              {% if forloop.counter <= review.score %}★{% else %}☆{% endif %}
+            {% endfor %}
+          </span>
+          <strong>{{ review.author.name }}</strong>
+        </div>
+        <h3>{{ review.exchange.offered_listing.title }} → {{ review.exchange.requested_listing.title }}</h3>
+        <p>{{ review.text|default:"Пользователь оставил оценку без текста." }}</p>
+      </article>
+    {% empty %}
+      <p class="empty">Отзывов пока нет.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

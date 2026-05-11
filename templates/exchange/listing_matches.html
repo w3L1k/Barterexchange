@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+
+{% block title %}Подбор для {{ listing.title }}{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+  <p class="eyebrow">рекомендации обмена</p>
+  <h1>{{ listing.title }}</h1>
+  <p>Сначала показаны товары нужной категории в вашем городе, затем нужной категории в других городах, затем товары из вашего города.</p>
+</section>
+
+<section class="grid">
+  {% for match in matches %}
+    {% include "exchange/partials/match_card.html" with match=match %}
+  {% empty %}
+    <p class="empty">Для этого объявления пока нет товаров подходящей категории или товаров из этого города.</p>
+  {% endfor %}
+</section>
+{% endblock %}

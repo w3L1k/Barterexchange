@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+
+{% block title %}Редактировать профиль{% endblock %}
+
+{% block content %}
+<section class="form-page">
+  <div>
+    <p class="eyebrow">мой профиль</p>
+    <h1>Редактировать профиль</h1>
+    <p>Обновите имя, город и короткое описание, которое увидят другие участники обмена.</p>
+  </div>
+  <form class="form-card" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="form-actions">
+      <button type="submit">Сохранить</button>
+      <a class="button ghost" href="{% url 'my_profile' %}">Отмена</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

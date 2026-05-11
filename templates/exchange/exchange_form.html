@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+
+{% block title %}Предложить обмен{% endblock %}
+
+{% block content %}
+<section class="form-page">
+  <div>
+    <p class="eyebrow">предложение обмена</p>
+    <h1>{{ requested_listing.title }}</h1>
+    <p>Выберите одно из своих активных объявлений, которое хотите предложить владельцу.</p>
+  </div>
+  <form class="form-card" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="form-actions">
+      <button type="submit">Отправить предложение</button>
+    </div>
+  </form>
+</section>
+{% endblock %}

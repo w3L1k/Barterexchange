@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+
+{% block title %}Вход{% endblock %}
+
+{% block content %}
+<section class="auth-page">
+  <div class="page-heading">
+    <p class="eyebrow">аккаунт</p>
+    <h1>Войти</h1>
+    <p>Войдите в свой профиль, чтобы создавать объявления и предлагать обмен.</p>
+  </div>
+
+  <form class="form-card auth-card" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="form-actions">
+      <button type="submit">Войти</button>
+    </div>
+    <p class="form-note">Нет аккаунта? <a href="{% url 'register' %}">Зарегистрироваться</a></p>
+  </form>
+</section>
+
+<section class="demo-credentials">
+  <h2>Демо-аккаунты</h2>
+  <p>Нажмите на профиль, чтобы сразу войти в демо-аккаунт.</p>
+  <div class="credential-grid">
+    {% for username in demo_users %}
+      <form method="post" action="{% url 'demo_login' %}">
+        {% csrf_token %}
+        <input type="hidden" name="username" value="{{ username }}">
+        <button class="demo-account" type="submit">{{ username }}</button>
+      </form>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

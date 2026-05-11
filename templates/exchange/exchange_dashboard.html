@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Мои обмены{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+  <p class="eyebrow">демо-профиль: {{ current_profile.name }}</p>
+  <h1>Мои обмены</h1>
+  <p>Здесь видно, какие предложения пришли вам и какие предложения отправлены от вашего имени.</p>
+</section>
+
+<section class="exchange-columns">
+  <div>
+    <h2>Входящие</h2>
+    {% for exchange in incoming %}
+      {% include "exchange/partials/exchange_card.html" with exchange=exchange incoming=True %}
+    {% empty %}
+      <p class="empty">Входящих предложений пока нет.</p>
+    {% endfor %}
+  </div>
+  <div>
+    <h2>Исходящие</h2>
+    {% for exchange in outgoing %}
+      {% include "exchange/partials/exchange_card.html" with exchange=exchange incoming=False %}
+    {% empty %}
+      <p class="empty">Исходящих предложений пока нет.</p>
+    {% endfor %}
+  </div>
+  <div>
+    <h2>В процессе</h2>
+    {% for exchange in in_progress %}
+      {% include "exchange/partials/exchange_card.html" with exchange=exchange incoming=False %}
+    {% empty %}
+      <p class="empty">Обменов в процессе пока нет.</p>
+    {% endfor %}
+  </div>
+  <div>
+    <h2>Завершенные / ожидают оценки</h2>
+    {% for exchange in completed %}
+      {% include "exchange/partials/exchange_card.html" with exchange=exchange incoming=False %}
+    {% empty %}
+      <p class="empty">Завершенных обменов пока нет.</p>
+    {% endfor %}
+  </div>
+</section>
+{% endblock %}

@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+
+{% block title %}Жалоба{% endblock %}
+
+{% block content %}
+<section class="form-page">
+  <div>
+    <p class="eyebrow">модерация</p>
+    <h1>Отправить жалобу</h1>
+    <p>Жалоба попадет в админку, где модератор сможет проверить объект и зафиксировать результат рассмотрения.</p>
+  </div>
+
+  <form class="form-card" method="post">
+    {% csrf_token %}
+    <div class="complaint-target">
+      <span>{{ target_subtitle }}</span>
+      <strong>{{ target_title }}</strong>
+    </div>
+    {{ form.as_p }}
+    <div class="form-actions">
+      <button type="submit">Отправить жалобу</button>
+      <a class="button ghost" href="{{ cancel_url }}">Отмена</a>
+    </div>
+  </form>
+</section>
+{% endblock %}

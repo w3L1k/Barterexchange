@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}Уведомления{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+  <p class="eyebrow">события обменов</p>
+  <h1>Уведомления</h1>
+  <p>Здесь появляются новые предложения обмена, ответы на ваши предложения и напоминания об оценке завершенных обменов.</p>
+</section>
+
+<section class="notification-list">
+  {% for notification in notifications %}
+    <article class="notification-card {% if not notification.is_read %}unread{% endif %}">
+      <p>{{ notification.text }}</p>
+      <span>{{ notification.created_at|date:"d.m.Y H:i" }}</span>
+      {% if notification.url %}
+        <a href="{{ notification.url }}">Открыть</a>
+      {% endif %}
+    </article>
+  {% empty %}
+    <p class="empty">Уведомлений пока нет.</p>
+  {% endfor %}
+</section>
+{% endblock %}

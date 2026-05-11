@@ -1,0 +1,37 @@
+<article class="exchange-card">
+  <span class="status">{{ exchange.get_status_display }}</span>
+  <h3>{{ exchange.offered_listing.title }} → {{ exchange.requested_listing.title }}</h3>
+  <p>
+    {{ exchange.initiator.name }} предлагает обмен владельцу {{ exchange.receiver.name }}.
+  </p>
+  {% if exchange.comment %}
+    <p class="comment">{{ exchange.comment }}</p>
+  {% endif %}
+  <div class="actions">
+    {% if incoming and exchange.status == "pending" %}
+      <form method="post" action="{% url 'exchange_action' exchange.pk 'accept' %}">
+        {% csrf_token %}
+        <button type="submit">Принять</button>
+      </form>
+      <form method="post" action="{% url 'exchange_action' exchange.pk 'reject' %}">
+        {% csrf_token %}
+        <button class="secondary" type="submit">Отклонить</button>
+      </form>
+    {% endif %}
+    {% if exchange.status == "pending" or exchange.status == "accepted" %}
+      <form method="post" action="{% url 'exchange_action' exchange.pk 'cancel' %}">
+        {% csrf_token %}
+        <button class="secondary" type="submit">Отменить</button>
+      </form>
+    {% endif %}
+    {% if exchange.status == "accepted" %}
+      <form method="post" action="{% url 'exchange_action' exchange.pk 'complete' %}">
+        {% csrf_token %}
+        <button type="submit">Завершить</button>
+      </form>
+    {% endif %}
+    {% if exchange.can_review %}
+      <a class="button" href="{% url 'exchange_review' exchange.pk %}">Оставить отзыв</a>
+    {% endif %}
+  </div>
+</article>
