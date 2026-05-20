@@ -1,5 +1,8 @@
 from django.contrib import admin
-from .models import Category, Complaint, DemoProfile, ExchangeRequest, Listing, ListingImage, Review
+from django.urls import reverse
+from django.utils.html import format_html
+
+from .models import Category, Complaint, DemoProfile, ExchangeRequest, Favorite, Listing, ListingImage, Review
 
 
 admin.site.site_header = 'Администрирование BarterExchange'
@@ -27,17 +30,38 @@ class CategoryAdmin(admin.ModelAdmin):
 
 @admin.register(Listing)
 class ListingAdmin(admin.ModelAdmin):
-    list_display = ('title', 'owner', 'category', 'desired_category', 'city', 'status')
+    list_display = ('title', 'owner', 'category', 'desired_categories_list', 'city', 'status', 'site_link')
     list_filter = ('status', 'category', 'condition', 'city')
     search_fields = ('title', 'description', 'desired_keywords', 'owner__name')
     inlines = [ListingImageInline]
+
+    @admin.display(description='Желаемые категории')
+    def desired_categories_list(self, obj):
+        return obj.desired_categories_display
+
+    @admin.display(description='На сайте')
+    def site_link(self, obj):
+        return format_html('<a href="{}" target="_blank">Открыть</a>', obj.get_absolute_url())
+
+
+@admin.register(Favorite)
+class FavoriteAdmin(admin.ModelAdmin):
+    list_display = ('profile', 'listing', 'created_at')
+    search_fields = ('profile__name', 'listing__title')
 
 
 @admin.register(ExchangeRequest)
 class ExchangeRequestAdmin(admin.ModelAdmin):
     list_display = ('offered_listing', 'requested_listing', 'initiator', 'receiver', 'status', 'created_at')
     list_filter = ('status', 'created_at')
-    search_fields = ('offered_listing__title', 'requested_listing__title', 'initiator__name', 'receiver__name')
+    search_fields = (
+        'offered_listing__title',
+        'requested_listing__title',
+        'initiator__name',
+        'receiver__name',
+        'initiator_contact',
+        'receiver_contact',
+    )
 
 
 @admin.register(Review)
@@ -48,7 +72,7 @@ class ReviewAdmin(admin.ModelAdmin):
 
 @admin.register(Complaint)
 class ComplaintAdmin(admin.ModelAdmin):
-    list_display = ('id', 'target', 'reporter', 'reason', 'status', 'created_at', 'updated_at')
+    list_display = ('id', 'target', 'target_link', 'reporter', 'reason', 'status', 'created_at', 'updated_at')
     list_filter = ('status', 'reason', 'created_at')
     search_fields = (
         'reporter__name',
@@ -64,6 +88,15 @@ class ComplaintAdmin(admin.ModelAdmin):
     @admin.display(description='Объект жалобы')
     def target(self, obj):
         return obj.listing or obj.target_profile
+
+    @admin.display(description='Открыть')
+    def target_link(self, obj):
+        if obj.listing:
+            return format_html('<a href="{}" target="_blank">Объявление</a>', obj.listing.get_absolute_url())
+        if obj.target_profile:
+            url = reverse('profile_detail', args=[obj.target_profile.pk])
+            return format_html('<a href="{}" target="_blank">Профиль</a>', url)
+        return ''
 
     @admin.action(description='Отметить: на рассмотрении')
     def mark_in_review(self, request, queryset):

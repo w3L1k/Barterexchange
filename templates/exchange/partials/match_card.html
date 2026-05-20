@@ -10,13 +10,16 @@
   </div>
   <h2><a href="{{ match.listing.get_absolute_url }}">{{ match.listing.title }}</a></h2>
   <p>{{ match.listing.description|truncatewords:18 }}</p>
+  <div class="exchange-intent">
+    <span>Ищу взамен</span>
+    <strong>{{ match.listing.desired_categories_display }}</strong>
+  </div>
   <ul class="reasons">
     {% for reason in match.reasons %}
       <li>{{ reason }}</li>
     {% endfor %}
   </ul>
   <footer>
-    <span>{{ match.listing.owner.name }}</span>
     {% if current_profile and current_profile != match.listing.owner %}
       <a class="button" href="{% url 'exchange_create' match.listing.pk %}">Предложить обмен</a>
     {% endif %}

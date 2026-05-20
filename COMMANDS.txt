@@ -64,3 +64,8 @@ docker compose down -v
 После обычных изменений HTML, CSS или Python-кода контейнеры обычно пересоздавать не надо.
 После изменения requirements.txt или Dockerfile нужна пересборка:
 docker compose up --build -d
+
+
+
+admin
+1qa2ws3ed4rf5tg6yh

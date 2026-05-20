@@ -7,9 +7,18 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.views.decorators.http import require_POST
 
-from .forms import ComplaintForm, ExchangeRequestForm, ExchangeReviewForm, ListingForm, LoginForm, ProfileForm, RegisterForm
-from .models import Complaint, DemoProfile, ExchangeRequest, Listing, ListingImage, Notification, Review
-from .services import find_matches
+from .forms import (
+    ComplaintForm,
+    ExchangeAcceptForm,
+    ExchangeRequestForm,
+    ExchangeReviewForm,
+    ListingForm,
+    LoginForm,
+    ProfileForm,
+    RegisterForm,
+)
+from .models import Complaint, DemoProfile, ExchangeRequest, Favorite, Listing, ListingImage, Notification, Review
+from .services import find_matches, group_matches
 
 
 def get_current_profile(request):
@@ -38,6 +47,12 @@ def common_context(request):
 
 def notify(profile, text, url=''):
     Notification.objects.create(profile=profile, text=text, url=url)
+
+
+def sync_legacy_desired_category(listing, form):
+    desired_categories = list(form.cleaned_data['desired_categories'])
+    if desired_categories:
+        listing.desired_category = desired_categories[0]
 
 
 def listing_has_active_exchange(listing):
@@ -98,6 +113,8 @@ def login_view(request):
         login(request, form.get_user())
         messages.success(request, 'Вы вошли в аккаунт.')
         return redirect(request.GET.get('next') or 'catalog')
+    if request.method == 'POST':
+        messages.error(request, 'Неверный логин или пароль.')
     demo_users = ['artem', 'maria', 'ilya', 'sofia', 'nikita', 'elena', 'daniil', 'alina']
     return render(request, 'exchange/login.html', {'form': form, 'demo_users': demo_users})
 
@@ -141,8 +158,10 @@ def logout_view(request):
 
 def catalog(request):
     profile = get_current_profile(request)
-    listings = Listing.objects.select_related('owner', 'category', 'desired_category').prefetch_related('images').filter(
-        status=Listing.Status.ACTIVE
+    listings = (
+        Listing.objects.select_related('owner', 'category', 'desired_category')
+        .prefetch_related('images', 'desired_categories')
+        .filter(status=Listing.Status.ACTIVE)
     )
     if profile:
         listings = listings.exclude(owner=profile)
@@ -190,7 +209,11 @@ def catalog(request):
 def profile_detail(request, pk=None):
     current_profile = get_current_profile(request)
     profile = current_profile if pk is None else get_object_or_404(DemoProfile, pk=pk)
-    listings = Listing.objects.select_related('category', 'desired_category').prefetch_related('images').filter(owner=profile)
+    listings = (
+        Listing.objects.select_related('category', 'desired_category')
+        .prefetch_related('images', 'desired_categories')
+        .filter(owner=profile)
+    )
     reviews = Review.objects.select_related(
         'author',
         'exchange',
@@ -224,17 +247,25 @@ def profile_detail(request, pk=None):
 
 def listing_detail(request, pk):
     listing = get_object_or_404(
-        Listing.objects.select_related('owner', 'category', 'desired_category').prefetch_related('images'),
+        Listing.objects.select_related('owner', 'category', 'desired_category').prefetch_related(
+            'images', 'desired_categories'
+        ),
         pk=pk,
     )
     context = common_context(request)
     current_profile = context['current_profile']
     if listing.status != Listing.Status.ACTIVE and listing.owner != current_profile:
         raise Http404
+    matches = find_matches(listing, limit=12) if listing.status == Listing.Status.ACTIVE else []
     context.update(
         {
             'listing': listing,
-            'matches': find_matches(listing, limit=4) if listing.status == Listing.Status.ACTIVE else [],
+            'match_groups': group_matches(matches),
+            'is_favorite': (
+                Favorite.objects.filter(profile=current_profile, listing=listing).exists()
+                if current_profile and current_profile != listing.owner
+                else False
+            ),
             'has_active_exchange': listing_has_active_exchange(listing),
         }
     )
@@ -243,11 +274,13 @@ def listing_detail(request, pk):
 
 def listing_matches(request, pk):
     listing = get_object_or_404(
-        Listing.objects.select_related('owner', 'category', 'desired_category').prefetch_related('images'),
+        Listing.objects.select_related('owner', 'category', 'desired_category').prefetch_related(
+            'images', 'desired_categories'
+        ),
         pk=pk,
     )
     context = common_context(request)
-    context.update({'listing': listing, 'matches': find_matches(listing, limit=24)})
+    context.update({'listing': listing, 'match_groups': group_matches(find_matches(listing, limit=48))})
     return render(request, 'exchange/listing_matches.html', context)
 
 
@@ -262,7 +295,9 @@ def listing_create(request):
         if form.is_valid():
             listing = form.save(commit=False)
             listing.owner = profile
+            sync_legacy_desired_category(listing, form)
             listing.save()
+            form.save_m2m()
             photo = form.cleaned_data.get('photo')
             if photo:
                 ListingImage.objects.create(listing=listing, image=photo, alt_text=listing.title)
@@ -298,7 +333,10 @@ def listing_edit(request, pk):
     if request.method == 'POST':
         form = ListingForm(request.POST, request.FILES, instance=listing)
         if form.is_valid():
-            listing = form.save()
+            listing = form.save(commit=False)
+            sync_legacy_desired_category(listing, form)
+            listing.save()
+            form.save_m2m()
             photo = form.cleaned_data.get('photo')
             if photo:
                 listing.images.all().delete()
@@ -312,6 +350,38 @@ def listing_edit(request, pk):
     context = common_context(request)
     context.update({'form': form, 'listing': listing})
     return render(request, 'exchange/listing_form.html', context)
+
+
+@login_required
+def favorites(request):
+    profile = get_current_profile(request)
+    items = (
+        Favorite.objects.select_related('listing', 'listing__owner', 'listing__category', 'listing__desired_category')
+        .prefetch_related('listing__images', 'listing__desired_categories')
+        .filter(profile=profile)
+    )
+    context = common_context(request)
+    context.update({'favorites': items})
+    return render(request, 'exchange/favorites.html', context)
+
+
+@require_POST
+@login_required
+def favorite_toggle(request, pk):
+    profile = get_current_profile(request)
+    listing = get_object_or_404(Listing, pk=pk, status=Listing.Status.ACTIVE)
+    next_url = request.POST.get('next') or listing.get_absolute_url()
+    if listing.owner == profile:
+        messages.error(request, 'Нельзя добавить свое объявление в избранное.')
+        return redirect(next_url)
+    favorite = Favorite.objects.filter(profile=profile, listing=listing).first()
+    if favorite:
+        favorite.delete()
+        messages.success(request, 'Объявление удалено из избранного.')
+    else:
+        Favorite.objects.create(profile=profile, listing=listing)
+        messages.success(request, 'Объявление добавлено в избранное.')
+    return redirect(next_url)
 
 
 @require_POST
@@ -457,6 +527,37 @@ def exchange_dashboard(request):
 
 
 @login_required
+def exchange_accept(request, pk):
+    profile = get_current_profile(request)
+    exchange = get_object_or_404(
+        ExchangeRequest.objects.select_related('initiator', 'receiver', 'offered_listing', 'requested_listing'),
+        pk=pk,
+        receiver=profile,
+        status=ExchangeRequest.Status.PENDING,
+    )
+    form = ExchangeAcceptForm(request.POST or None, instance=exchange)
+    if request.method == 'POST' and form.is_valid():
+        exchange = form.save(commit=False)
+        exchange.status = ExchangeRequest.Status.ACCEPTED
+        exchange.save(update_fields=['receiver_contact', 'status', 'updated_at'])
+        ExchangeRequest.objects.filter(
+            requested_listing=exchange.requested_listing,
+            status=ExchangeRequest.Status.PENDING,
+        ).exclude(pk=exchange.pk).update(status=ExchangeRequest.Status.REJECTED)
+        notify(
+            exchange.initiator,
+            f'Ваш обмен «{exchange.offered_listing.title} → {exchange.requested_listing.title}» принят.',
+            '/profile/',
+        )
+        messages.success(request, 'Обмен принят. Теперь у обеих сторон есть способы связи.')
+        return redirect('my_profile')
+
+    context = common_context(request)
+    context.update({'form': form, 'exchange': exchange})
+    return render(request, 'exchange/exchange_accept.html', context)
+
+
+@login_required
 def exchange_review(request, pk):
     profile = get_current_profile(request)
     exchange = get_object_or_404(
@@ -498,14 +599,7 @@ def exchange_action(request, pk, action):
         return redirect('exchange_dashboard')
 
     if action == 'accept' and profile == exchange.receiver and exchange.status == ExchangeRequest.Status.PENDING:
-        exchange.status = ExchangeRequest.Status.ACCEPTED
-        exchange.save(update_fields=['status', 'updated_at'])
-        ExchangeRequest.objects.filter(
-            requested_listing=exchange.requested_listing,
-            status=ExchangeRequest.Status.PENDING,
-        ).exclude(pk=exchange.pk).update(status=ExchangeRequest.Status.REJECTED)
-        notify(exchange.initiator, f'Ваш обмен «{exchange.offered_listing.title} → {exchange.requested_listing.title}» принят.', '/profile/')
-        messages.success(request, 'Обмен принят. Остальные предложения по этому товару отклонены.')
+        return redirect('exchange_accept', pk=exchange.pk)
     elif action == 'reject' and profile == exchange.receiver and exchange.status == ExchangeRequest.Status.PENDING:
         exchange.status = ExchangeRequest.Status.REJECTED
         exchange.save(update_fields=['status', 'updated_at'])

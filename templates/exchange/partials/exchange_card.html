@@ -4,15 +4,15 @@
   <p>
     {{ exchange.initiator.name }} предлагает обмен владельцу {{ exchange.receiver.name }}.
   </p>
-  {% if exchange.comment %}
-    <p class="comment">{{ exchange.comment }}</p>
+  {% if exchange.initiator_contact %}
+    <p class="contact-line"><strong>Контакт инициатора:</strong> {{ exchange.initiator_contact }}</p>
+  {% endif %}
+  {% if exchange.receiver_contact %}
+    <p class="contact-line"><strong>Контакт получателя:</strong> {{ exchange.receiver_contact }}</p>
   {% endif %}
   <div class="actions">
     {% if incoming and exchange.status == "pending" %}
-      <form method="post" action="{% url 'exchange_action' exchange.pk 'accept' %}">
-        {% csrf_token %}
-        <button type="submit">Принять</button>
-      </form>
+      <a class="button" href="{% url 'exchange_accept' exchange.pk %}">Принять</a>
       <form method="post" action="{% url 'exchange_action' exchange.pk 'reject' %}">
         {% csrf_token %}
         <button class="secondary" type="submit">Отклонить</button>

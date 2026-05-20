@@ -74,7 +74,7 @@ class ListingForm(forms.ModelForm):
             'condition',
             'city',
             'exchange_terms',
-            'desired_category',
+            'desired_categories',
             'desired_keywords',
             'acceptable_city',
         ]
@@ -85,7 +85,7 @@ class ListingForm(forms.ModelForm):
             'condition': 'Состояние',
             'city': 'Город',
             'exchange_terms': 'Условия обмена',
-            'desired_category': 'Желаемая категория',
+            'desired_categories': 'Какие категории рассматриваете взамен',
             'desired_keywords': 'Что хотите получить',
             'acceptable_city': 'Подходящий город',
         }
@@ -100,20 +100,26 @@ class ListingForm(forms.ModelForm):
             'exchange_terms': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Без доплаты, самовывоз, встреча в городе и т.д.'}),
             'desired_keywords': forms.TextInput(attrs={'placeholder': 'Что хотите получить взамен'}),
             'acceptable_city': forms.TextInput(attrs={'placeholder': 'Москва'}),
+            'desired_categories': forms.CheckboxSelectMultiple(),
         }
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields['category'].empty_label = 'Выберите категорию'
-        self.fields['desired_category'].empty_label = 'Выберите желаемую категорию'
+        self.fields['desired_categories'].required = True
+        if self.instance and self.instance.pk and not self.instance.desired_categories.exists():
+            self.initial['desired_categories'] = [self.instance.desired_category_id]
 
 
 class ExchangeRequestForm(forms.ModelForm):
     class Meta:
         model = ExchangeRequest
-        fields = ['offered_listing', 'comment']
+        fields = ['offered_listing', 'initiator_contact']
+        labels = {
+            'initiator_contact': 'Ваш способ связи',
+        }
         widgets = {
-            'comment': forms.Textarea(attrs={'rows': 3, 'placeholder': 'Коротко опишите условия обмена'}),
+            'initiator_contact': forms.TextInput(attrs={'placeholder': 'Телефон, email или другой удобный контакт'}),
         }
 
     def __init__(self, *args, profile=None, requested_listing=None, **kwargs):
@@ -123,6 +129,23 @@ class ExchangeRequestForm(forms.ModelForm):
             queryset = queryset.exclude(pk=requested_listing.pk)
         self.fields['offered_listing'].queryset = queryset
         self.fields['offered_listing'].label = 'Что вы предлагаете'
+        self.fields['initiator_contact'].required = True
+
+
+class ExchangeAcceptForm(forms.ModelForm):
+    class Meta:
+        model = ExchangeRequest
+        fields = ['receiver_contact']
+        labels = {
+            'receiver_contact': 'Ваш способ связи',
+        }
+        widgets = {
+            'receiver_contact': forms.TextInput(attrs={'placeholder': 'Телефон, email или другой удобный контакт'}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['receiver_contact'].required = True
 
 
 class ProfileReviewForm(forms.ModelForm):

@@ -9,11 +9,20 @@
   <p>Сначала показаны товары нужной категории в вашем городе, затем нужной категории в других городах, затем товары из вашего города.</p>
 </section>
 
-<section class="grid">
-  {% for match in matches %}
-    {% include "exchange/partials/match_card.html" with match=match %}
+{% for group in match_groups %}
+  <section class="match-group">
+    <div class="section-heading">
+      <h2>{{ group.title }}</h2>
+    </div>
+    <div class="grid compact">
+      {% for match in group.matches %}
+        {% include "exchange/partials/match_card.html" with match=match %}
+      {% endfor %}
+    </div>
+  </section>
   {% empty %}
+  <section>
     <p class="empty">Для этого объявления пока нет товаров подходящей категории или товаров из этого города.</p>
-  {% endfor %}
-</section>
+  </section>
+{% endfor %}
 {% endblock %}

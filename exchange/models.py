@@ -45,9 +45,10 @@ class Category(models.Model):
 class Listing(models.Model):
     class Condition(models.TextChoices):
         NEW = 'new', 'Новое'
-        EXCELLENT = 'excellent', 'Отличное'
+        LIKE_NEW = 'excellent', 'Как новое'
         GOOD = 'good', 'Хорошее'
-        FAIR = 'fair', 'Нормальное'
+        USED = 'fair', 'Есть следы использования'
+        NEEDS_REPAIR = 'needs_repair', 'Требует ремонта'
 
     class Status(models.TextChoices):
         ACTIVE = 'active', 'Активно'
@@ -68,6 +69,12 @@ class Listing(models.Model):
         on_delete=models.PROTECT,
         related_name='desired_by_listings',
         verbose_name='Желаемая категория',
+    )
+    desired_categories = models.ManyToManyField(
+        Category,
+        related_name='desired_by_multiple_listings',
+        verbose_name='Желаемые категории',
+        blank=True,
     )
     desired_keywords = models.CharField(
         'Что хочет получить',
@@ -97,6 +104,28 @@ class Listing(models.Model):
             return image.image.url
         return self.external_image_url
 
+    @property
+    def desired_categories_display(self):
+        categories = list(self.desired_categories.all())
+        if categories:
+            return ', '.join(category.name for category in categories)
+        return self.desired_category.name
+
+
+class Favorite(models.Model):
+    profile = models.ForeignKey(DemoProfile, on_delete=models.CASCADE, related_name='favorites', verbose_name='Профиль')
+    listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='favorited_by', verbose_name='Объявление')
+    created_at = models.DateTimeField('Дата добавления', auto_now_add=True)
+
+    class Meta:
+        unique_together = [('profile', 'listing')]
+        ordering = ['-created_at']
+        verbose_name = 'Избранное объявление'
+        verbose_name_plural = 'Избранные объявления'
+
+    def __str__(self):
+        return f'{self.profile} сохранил {self.listing}'
+
 
 class ListingImage(models.Model):
     listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='images', verbose_name='Объявление')
@@ -124,6 +153,8 @@ class ExchangeRequest(models.Model):
     offered_listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='offered_in_requests', verbose_name='Предлагаемое объявление')
     requested_listing = models.ForeignKey(Listing, on_delete=models.CASCADE, related_name='requested_in_requests', verbose_name='Запрошенное объявление')
     comment = models.TextField('Комментарий', blank=True)
+    initiator_contact = models.CharField('Способ связи инициатора', max_length=220, blank=True)
+    receiver_contact = models.CharField('Способ связи получателя', max_length=220, blank=True)
     status = models.CharField('Статус', max_length=20, choices=Status.choices, default=Status.PENDING)
     created_at = models.DateTimeField('Дата создания', auto_now_add=True)
     updated_at = models.DateTimeField('Дата обновления', auto_now=True)

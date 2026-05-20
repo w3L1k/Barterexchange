@@ -59,7 +59,7 @@
         <p>{{ listing.description|truncatechars:115 }}</p>
         <div class="exchange-intent">
           <span>Ищу взамен</span>
-          <strong>{{ listing.desired_category.name }}</strong>
+          <strong>{{ listing.desired_categories_display }}</strong>
         </div>
         <div class="listing-meta">
           <span>Состояние: {{ listing.get_condition_display }}</span>

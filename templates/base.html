@@ -17,6 +17,8 @@
       <nav>
         <a class="{% if request.resolver_match.url_name == 'catalog' %}active{% endif %}" href="{% url 'catalog' %}">Каталог</a>
         <a class="{% if request.resolver_match.url_name == 'my_profile' or request.resolver_match.url_name == 'profile_detail' %}active{% endif %}" href="{% url 'my_profile' %}">Профиль</a>
+        <a class="{% if request.resolver_match.url_name == 'favorites' %}active{% endif %}" href="{% url 'favorites' %}">Избранное</a>
+        <a class="{% if request.resolver_match.url_name == 'exchange_dashboard' %}active{% endif %}" href="{% url 'exchange_dashboard' %}">Мои обмены</a>
         <a class="{% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" href="{% url 'notifications' %}">
           Уведомления{% if unread_notifications_count %} · {{ unread_notifications_count }}{% endif %}
         </a>

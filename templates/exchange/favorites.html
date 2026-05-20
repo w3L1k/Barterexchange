@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+
+{% block title %}Избранное{% endblock %}
+
+{% block content %}
+<section class="page-heading">
+  <p class="eyebrow">сохраненные объявления</p>
+  <h1>Избранное</h1>
+  <p>Здесь собраны объявления, к которым вы хотите вернуться позже.</p>
+</section>
+
+<section class="grid compact">
+  {% for item in favorites %}
+    {% with listing=item.listing %}
+      <article class="listing-card">
+        {% if listing.primary_image_url %}
+          <a class="card-image" href="{{ listing.get_absolute_url }}">
+            <img src="{{ listing.primary_image_url }}" alt="{{ listing.title }}" loading="lazy">
+          </a>
+        {% endif %}
+        <div class="card-topline">
+          <span>{{ listing.category.name }}</span>
+          <span>{{ listing.city }}</span>
+        </div>
+        <h2><a href="{{ listing.get_absolute_url }}">{{ listing.title }}</a></h2>
+        <p>{{ listing.description|truncatechars:115 }}</p>
+        <div class="exchange-intent">
+          <span>Ищу взамен</span>
+          <strong>{{ listing.desired_categories_display }}</strong>
+        </div>
+        <div class="listing-meta">
+          <span>Состояние: {{ listing.get_condition_display }}</span>
+        </div>
+        <footer>
+          <a class="button" href="{% url 'exchange_create' listing.pk %}">Предложить обмен</a>
+          <form method="post" action="{% url 'favorite_toggle' listing.pk %}">
+            {% csrf_token %}
+            <input type="hidden" name="next" value="{{ request.get_full_path }}">
+            <button class="secondary" type="submit">Убрать</button>
+          </form>
+        </footer>
+      </article>
+    {% endwith %}
+  {% empty %}
+    <p class="empty">В избранном пока нет объявлений.</p>
+  {% endfor %}
+</section>
+{% endblock %}

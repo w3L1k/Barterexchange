@@ -2,7 +2,7 @@ from django.contrib.auth.models import User
 from django.core.management.base import BaseCommand
 from django.utils.text import slugify
 
-from exchange.models import Category, DemoProfile, ExchangeRequest, Listing, Notification, Review
+from exchange.models import Category, DemoProfile, ExchangeRequest, Favorite, Listing, Notification, Review
 
 
 class Command(BaseCommand):
@@ -10,6 +10,7 @@ class Command(BaseCommand):
 
     def handle(self, *args, **options):
         Review.objects.all().delete()
+        Favorite.objects.all().delete()
         Notification.objects.all().delete()
         ExchangeRequest.objects.all().delete()
         Listing.objects.all().delete()
@@ -18,7 +19,7 @@ class Command(BaseCommand):
         User.objects.filter(is_superuser=False).delete()
 
         categories = {}
-        for name in ['Техника', 'Книги', 'Одежда', 'Спорт', 'Дом', 'Хобби', 'Игры', 'Музыка']:
+        for name in ['Техника', 'Книги', 'Одежда', 'Спорт', 'Дом', 'Хобби', 'Игры', 'Музыка', 'Другое']:
             categories[name] = Category.objects.create(name=name, slug=slugify(name, allow_unicode=True))
 
         profiles = [
@@ -87,9 +88,9 @@ class Command(BaseCommand):
 
         condition_map = {
             'Новое': Listing.Condition.NEW,
-            'Отличное': Listing.Condition.EXCELLENT,
+            'Отличное': Listing.Condition.LIKE_NEW,
             'Хорошее': Listing.Condition.GOOD,
-            'Нормальное': Listing.Condition.FAIR,
+            'Нормальное': Listing.Condition.USED,
         }
 
         title_image_paths = [
@@ -186,6 +187,16 @@ class Command(BaseCommand):
 
         city_counts = {city: 0 for city in profiles_by_city}
         created_listings = []
+        extra_desired = {
+            'Техника': ['Книги', 'Игры'],
+            'Книги': ['Техника', 'Хобби'],
+            'Одежда': ['Спорт', 'Техника'],
+            'Спорт': ['Одежда', 'Музыка'],
+            'Дом': ['Техника', 'Одежда'],
+            'Хобби': ['Книги', 'Игры'],
+            'Игры': ['Книги', 'Техника'],
+            'Музыка': ['Спорт', 'Книги'],
+        }
         for index, item in enumerate(samples):
             title, category, condition, _old_value, desired_category, keywords, city = item
             city_profiles = profiles_by_city[city]
@@ -204,6 +215,13 @@ class Command(BaseCommand):
                 desired_keywords=keywords,
                 acceptable_city=city,
             )
+            desired_names = [desired_category]
+            for extra_name in extra_desired.get(category, []):
+                if extra_name not in desired_names:
+                    desired_names.append(extra_name)
+                if len(desired_names) == 2:
+                    break
+            listing.desired_categories.set(categories[name] for name in desired_names)
             created_listings.append(listing)
 
         profiles_by_username = {profile.user.username: profile for profile in profile_objs}
@@ -263,7 +281,13 @@ class Command(BaseCommand):
                 receiver=requested_listing.owner,
                 offered_listing=offered_listing,
                 requested_listing=requested_listing,
-                comment=comment,
+                initiator_contact=f'{initiator_username}@barter.local',
+                receiver_contact=(
+                    f'{receiver_username}@barter.local'
+                    if status in [ExchangeRequest.Status.ACCEPTED, ExchangeRequest.Status.COMPLETED]
+                    else ''
+                ),
+                comment='',
                 status=status,
             )
             if status == ExchangeRequest.Status.ACCEPTED:
@@ -286,6 +310,16 @@ class Command(BaseCommand):
                     score=4,
                     text=receiver_text,
                 )
+
+        for profile in profile_objs:
+            saved = 0
+            for listing in created_listings:
+                listing.refresh_from_db()
+                if listing.owner != profile and listing.status == Listing.Status.ACTIVE:
+                    Favorite.objects.get_or_create(profile=profile, listing=listing)
+                    saved += 1
+                if saved == 2:
+                    break
 
         for owner, owner_listings in listings_by_owner.items():
             active_count = 0

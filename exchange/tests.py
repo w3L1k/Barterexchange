@@ -3,7 +3,7 @@ from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
 
-from .models import Category, Complaint, DemoProfile, ExchangeRequest, Listing, ListingImage, Notification, Review
+from .models import Category, Complaint, DemoProfile, ExchangeRequest, Favorite, Listing, ListingImage, Notification, Review
 from .services import find_matches
 
 
@@ -85,13 +85,20 @@ class ExchangeFlowTests(TestCase):
         )
         self.client.force_login(self.maria_user)
 
-        response = self.client.post(reverse('exchange_action', args=[accepted.pk, 'accept']))
+        response = self.client.get(reverse('exchange_accept', args=[accepted.pk]))
+        self.assertEqual(response.status_code, 200)
+
+        response = self.client.post(
+            reverse('exchange_accept', args=[accepted.pk]),
+            {'receiver_contact': 'maria@example.test'},
+        )
 
         self.assertRedirects(response, reverse('my_profile'))
         accepted.refresh_from_db()
         competing.refresh_from_db()
         self.assertEqual(accepted.status, ExchangeRequest.Status.ACCEPTED)
         self.assertEqual(competing.status, ExchangeRequest.Status.REJECTED)
+        self.assertEqual(accepted.receiver_contact, 'maria@example.test')
 
     def test_profile_shows_listings_and_completed_exchange_review_button(self):
         exchange = ExchangeRequest.objects.create(
@@ -143,11 +150,12 @@ class ExchangeFlowTests(TestCase):
 
         response = self.client.post(
             reverse('exchange_create', args=[self.requested.pk]),
-            {'offered_listing': self.offered_a.pk, 'comment': 'Предлагаю обмен'},
+            {'offered_listing': self.offered_a.pk, 'initiator_contact': 'alex@example.test'},
         )
 
         self.assertRedirects(response, reverse('my_profile'))
         self.assertTrue(Notification.objects.filter(profile=self.maria, text__contains='предлагает обмен').exists())
+        self.assertTrue(ExchangeRequest.objects.filter(initiator_contact='alex@example.test').exists())
 
     def test_exchange_create_without_own_listings_prompts_to_create_listing(self):
         new_user = User.objects.create_user(username='newbie', password='demo12345')
@@ -354,7 +362,7 @@ class CatalogAndListingFormTests(TestCase):
                 'condition': Listing.Condition.GOOD,
                 'city': 'Москва',
                 'exchange_terms': 'Обмен по договоренности',
-                'desired_category': self.books.pk,
+                'desired_categories': [self.books.pk],
                 'desired_keywords': 'книги',
                 'acceptable_city': 'Москва',
                 'photo': image,
@@ -364,6 +372,20 @@ class CatalogAndListingFormTests(TestCase):
         self.assertEqual(response.status_code, 302)
         listing = Listing.objects.get(title='Настольная лампа')
         self.assertTrue(ListingImage.objects.filter(listing=listing).exists())
+        self.assertEqual(listing.desired_categories.first(), self.books)
+
+    def test_user_can_add_listing_to_favorites(self):
+        listing = Listing.objects.get(title='Беспроводные наушники')
+        self.client.force_login(self.user)
+
+        response = self.client.post(reverse('favorite_toggle', args=[listing.pk]))
+
+        self.assertRedirects(response, listing.get_absolute_url())
+        self.assertTrue(Favorite.objects.filter(profile=self.profile, listing=listing).exists())
+
+        response = self.client.get(reverse('favorites'))
+
+        self.assertContains(response, listing.title)
 
     def test_owner_can_delete_listing_without_active_exchange(self):
         listing = Listing.objects.create(

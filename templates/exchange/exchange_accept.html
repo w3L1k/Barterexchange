@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+{% block title %}Принять обмен{% endblock %}
+
+{% block content %}
+<section class="form-page">
+  <div>
+    <p class="eyebrow">подтверждение обмена</p>
+    <h1>Укажите способ связи</h1>
+    <p>{{ exchange.initiator.name }} предлагает «{{ exchange.offered_listing.title }}» за «{{ exchange.requested_listing.title }}».</p>
+    {% if exchange.initiator_contact %}
+      <p class="contact-line"><strong>Контакт инициатора:</strong> {{ exchange.initiator_contact }}</p>
+    {% endif %}
+  </div>
+  <form class="form-card" method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <div class="form-actions">
+      <button type="submit">Принять обмен</button>
+      <a class="button ghost" href="{% url 'my_profile' %}">Отмена</a>
+    </div>
+  </form>
+</section>
+{% endblock %}
